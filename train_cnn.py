@@ -43,9 +43,9 @@ from PIL import Image
 #  CONFIG
 # ══════════════════════════════════════════════════════════════════════════════
 
-TRAIN_DIR   = Path("data/train")
-TEST_DIR    = Path("data/test")
-OUTPUT_DIR  = Path("output")           # checkpoints, plots, reports
+TRAIN_DIR   = Path("harsh_model_data/train_data")
+TEST_DIR    = Path("harsh_model_data/test_data")
+OUTPUT_DIR  = Path("harsh_model_data/output")           # checkpoints, plots, reports
 
 LABELS      = ["Still", "Typing", "Scrolling", "Flipping"]
 SKIP_LABELS = {"Ignore", "Unlabeled", "Unknown"}
@@ -114,7 +114,7 @@ class SpectrogramDataset(Dataset):
             for img_path in rec_dir.glob("*.png"):
                 m = re.search(r"\d+", img_path.name)
                 if m:
-                    sec2img[int(m.group(1))] = img_path
+                    sec2img[int(m.group())] = img_path
 
             for second, label in sec2label.items():
                 if label in SKIP_LABELS:
@@ -178,49 +178,15 @@ def get_transforms():
 # ── Model ─────────────────────────────────────────────────────────────────────
 
 def build_model(num_classes: int) -> nn.Module:
-    """
-    Lightweight CNN built from scratch — well-suited for this dataset size.
-
-    Architecture:
-        3 × [Conv2d → BN → ReLU → MaxPool]   (feature extractor)
-        GlobalAvgPool
-        FC(256) → Dropout(0.4) → FC(num_classes)
-
-    Input:  (B, 3, 224, 224)
-    Output: (B, num_classes)  logits
-    """
-
-    class CSI_CNN(nn.Module):
-        def __init__(self, num_classes):
-            super().__init__()
-
-            def conv_block(in_ch, out_ch, kernel=3, pool=2):
-                return nn.Sequential(
-                    nn.Conv2d(in_ch, out_ch, kernel, padding=kernel // 2, bias=False),
-                    nn.BatchNorm2d(out_ch),
-                    nn.ReLU(inplace=True),
-                    nn.MaxPool2d(pool),
-                )
-
-            self.features = nn.Sequential(
-                conv_block(3,   32),    # 224 → 112
-                conv_block(32,  64),    # 112 →  56
-                conv_block(64, 128),    #  56 →  28
-                conv_block(128, 256),   #  28 →  14
-            )
-            self.pool = nn.AdaptiveAvgPool2d(1)  # → (B, 256, 1, 1)
-            self.classifier = nn.Sequential(
-                nn.Flatten(),
-                nn.Linear(256, 256),
-                nn.ReLU(inplace=True),
-                nn.Dropout(0.4),
-                nn.Linear(256, num_classes),
-            )
-
-        def forward(self, x):
-            return self.classifier(self.pool(self.features(x)))
-
-    return CSI_CNN(num_classes)
+    """We use pretrained MobileNet and fine tune it."""
+    model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
+    # Replace classifier head only
+    in_features = model.classifier[1].in_features   # 1280
+    model.classifier = nn.Sequential(
+        nn.Dropout(0.4),
+        nn.Linear(in_features, num_classes),
+    )
+    return model
 
 
 # ── Class-weighted loss ───────────────────────────────────────────────────────
