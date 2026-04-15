@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Large / generated data
+collected_data/
+harsh_data/
+harsh_model_data/
+model_data/
+test_data/
+
+# External repos / toolboxes
+PicoscenesToolbox/
+
+# Local scripts / notes
+inference.py
+todo.md
+
+# Jupyter checkpoints (optional)
+.ipynb_checkpoints/
