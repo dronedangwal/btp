@@ -41,12 +41,7 @@ import json
 
 # List of recording filenames (relative to CSI_BASE_DIR, without .csi extension)
 FILENAMES: list[str] = [
-    "8/rx_2_260411_122344",
-    "9/rx_2_260411_122629",
-    "10/rx_2_260411_122900",
-    "7/rx_2_260411_122159",
     "5/rx_2_260411_121735",
-    "6/rx_2_260411_122006"
 ]
 
 CSI_BASE_DIR  = Path("/home/drone/BTP/collected_data")   # root of .csi files

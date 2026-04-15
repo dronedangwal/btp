@@ -26,7 +26,7 @@ import os
 from collections import defaultdict
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-INPUT_FILE  = "model_data/ActionLabelingforBTP13Apr2026_03h27m00s_export.csv"
+INPUT_FILE  = "model_data/Action-Labeling for BTP 214Apr2026_02h55m59s_export.csv"
 OUTPUT_DIR  = "model_data"           # output CSVs written here
 VIDEO_LEN   = 74            # seconds (fixed for all videos)
 MAJORITY_THRESHOLD = 0.5    # fraction of second needed to assign a label

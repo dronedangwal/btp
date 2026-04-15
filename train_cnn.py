@@ -44,8 +44,8 @@ from PIL import Image
 # ══════════════════════════════════════════════════════════════════════════════
 
 TRAIN_DIR   = Path("harsh_model_data/train_data")
-TEST_DIR    = Path("harsh_model_data/test_data")
-OUTPUT_DIR  = Path("harsh_model_data/output")           # checkpoints, plots, reports
+TEST_DIR    = Path("harsh_model_data/val_data")
+OUTPUT_DIR  = Path("harsh_model_data/output2")           # checkpoints, plots, reports
 
 LABELS      = ["Still", "Typing", "Scrolling", "Flipping"]
 SKIP_LABELS = {"Ignore", "Unlabeled", "Unknown"}
@@ -150,9 +150,7 @@ class SpectrogramDataset(Dataset):
 
 def get_transforms():
     """
-    Train: light augmentation (horizontal flip is meaningful since left↔right
-           in a time-series spectrogram doesn't change the activity class;
-           colour jitter handles CSI amplitude variability across environments).
+    Train: light augmentation (colour jitter handles CSI amplitude variability across environments).
     Val/Test: deterministic resize + normalise only.
     """
     imagenet_mean = [0.485, 0.456, 0.406]
@@ -160,8 +158,8 @@ def get_transforms():
 
     train_tf = transforms.Compose([
         transforms.Resize(IMG_SIZE),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        # transforms.RandomHorizontalFlip(),
+        # transforms.ColorJitter(brightness=0.2, contrast=0.2),
         transforms.ToTensor(),
         transforms.Normalize(imagenet_mean, imagenet_std),
     ])
@@ -330,7 +328,7 @@ def main():
         num_workers=NUM_WORKERS, pin_memory=True,
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=False,
+        test_dataset, batch_size=BATCH_SIZE, shuffle=True,
         num_workers=NUM_WORKERS, pin_memory=True,
     )
 
@@ -343,8 +341,9 @@ def main():
     # ── Model, loss, optimiser ────────────────────────────────────────────────
     model = build_model(num_classes).to(DEVICE)
 
-    class_weights = compute_class_weights(train_dataset, num_classes).to(DEVICE)
-    criterion     = nn.CrossEntropyLoss(weight=class_weights)
+    # class_weights = compute_class_weights(train_dataset, num_classes).to(DEVICE)
+    # criterion     = nn.CrossEntropyLoss(weight=class_weights)
+    criterion     = nn.CrossEntropyLoss()
     optimizer     = optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler     = optim.lr_scheduler.StepLR(optimizer, step_size=LR_STEP, gamma=LR_GAMMA)
 
