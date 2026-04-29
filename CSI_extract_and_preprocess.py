@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Tuple
 from picoparser import PicoParser          # pip install picoparser
 from tqdm import tqdm
-
+from scipy.interpolate import interp1d
 
 # ---------------------------------------------------------------------------
 # Timestamp window loader
@@ -121,11 +121,20 @@ def extract_csi_parallely(
 # Preprocessing
 # ---------------------------------------------------------------------------
 
-def preprocess_csi(ts_arr, csi_arr):
+def _interpolate(csi: np.ndarray, ts_ns: np.ndarray, target_len: int) -> np.ndarray:
+    """complex (N, S) + timestamps → complex (target_len, S)"""
+    t_range = ts_ns[-1] - ts_ns[0]
+    t_old = (ts_ns - ts_ns[0]) / t_range if t_range > 0 else np.linspace(0, 1, len(ts_ns))
+    t_new = np.linspace(0, 1, target_len)
+    rf = interp1d(t_old, np.real(csi), axis=0, kind="linear", fill_value="extrapolate")
+    if_ = interp1d(t_old, np.imag(csi), axis=0, kind="linear", fill_value="extrapolate")
+    return (rf(t_new) + 1j * if_(t_new)).astype(np.complex64)
+
+def preprocess_csi(ts_arr, csi_arr, args):
     """
     Preprocess raw CSI frames.
 
-    PLACEHOLDER: Do nothing
+    PLACEHOLDER: Interpolate the CSI matrix to 400 Hz
 
     Parameters
     ----------
@@ -138,10 +147,18 @@ def preprocess_csi(ts_arr, csi_arr):
     csi_proc : complex64 ndarray, shape (T', S)
     """
     # --- PLACEHOLDER START ---------------------------------------------------
-    # Do nothing
+    # Interpolate the CSI matrix to 400 Hz
+    start_ts = ts_arr[0]
+    end_ts = ts_arr[-1]
+    test_duration = args.test_duration
+    freq = 400
+    target_len = int(freq * test_duration)
+    print(f"  Target length: {target_len}")
+    print(f"  Frequency: {freq} Hz")
+    csi_arr = _interpolate(csi_arr, ts_arr, target_len)
+    ts_arr = np.linspace(start_ts, start_ts + test_duration * 1e9, target_len)
 
-    return ts_arr, csi_arr
-
+    return ts_arr, csi_arr  
 
 # ---------------------------------------------------------------------------
 # Subdir discovery helpers
@@ -217,7 +234,7 @@ def process_subdir(subdir: Path, output_dir: Path, args) -> None:
 
     # -- preprocess ----------------------------------------------------------
     print(f"  Preprocessing ({ts_raw.shape[0]} frames) ...")
-    ts_proc, csi_proc = preprocess_csi(ts_raw, csi_raw)
+    ts_proc, csi_proc = preprocess_csi(ts_raw, csi_raw, args)
 
     # -- save ----------------------------------------------------------------
     np.savez_compressed(out_path, ts=ts_proc, csi=csi_proc)
@@ -235,6 +252,7 @@ def parse_args():
                    help="Root directory whose immediate subdirs each contain a .csi + .json pair")
     p.add_argument("--output_dir",  required=True,
                    help="Where to write .npz files (one per subdir)")
+    p.add_argument("--test_duration", type=int, default=85)
     p.add_argument("--tx_idx",      type=int, default=0)
     p.add_argument("--rx_idx",      type=int, default=0)
     p.add_argument("--csi_idx",     type=int, default=0)

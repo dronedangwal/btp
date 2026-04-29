@@ -9,11 +9,14 @@ results to disk.
 
 Output layout (one .npz per input .npz file):
     <output_dir>/
-        <stem>_doppler.npz      # contains: doppler_map, freqs
+        <stem>_doppler.npz      # contains: doppler_map, freqs, fs, win_len, hop
             doppler_map : float32 (W, F)   – normalised Doppler profile
                           W = number of observation windows
                           F = nfft (Doppler frequency bins)
             freqs       : float64 (F,)     – Doppler frequency axis [Hz]
+            fs          : float64 scalar   – sampling rate used for Doppler [Hz]
+            win_len     : int64 scalar     – STFT window length [samples]
+            hop         : int64 scalar     – STFT hop size [samples]
 
 Usage
 -----
@@ -146,9 +149,8 @@ def process_file(npz_path, output_dir, args):
     fs = args.fs
     if fs is None:
         if len(ts) > 1:
-            # timestamps are in nanoseconds
-            dt_ns = np.median(np.diff(ts.astype(np.float64)))
-            fs    = 1e9 / dt_ns
+            # timestamps are in nanoseconds; assuming that the inter arrival time is constant
+            fs = round(len(ts) / ((ts[-1] - ts[0]) * 1e-9))
             print(f"    Estimated fs = {fs:.2f} Hz from timestamps")
         else:
             raise ValueError(
@@ -175,6 +177,9 @@ def process_file(npz_path, output_dir, args):
         out_path,
         doppler_map = doppler_map,     # float32 (W, F)
         freqs       = freqs,           # float64 (F,)
+        fs          = np.float64(fs),  # scalar sampling rate [Hz]
+        win_len     = np.int64(args.win_len),  # scalar window length [samples]
+        hop         = np.int64(args.hop),      # scalar hop size [samples]
     )
     print(f"  Saved → {out_path}")
 
